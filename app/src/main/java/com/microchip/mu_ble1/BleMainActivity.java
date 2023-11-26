@@ -62,6 +62,7 @@ import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -505,23 +506,23 @@ public class BleMainActivity extends AppCompatActivity {
     private void processIncomingData(byte[] newBytes) {
         try {
             transparentUartData.write(newBytes);                                                    //Add new data to any previous bytes left over
-            boolean search = (transparentUartData.size() >= 8);                                     //Need at least 8 bytes for a complete message
-            Log.d("^&^&", String.valueOf(transparentUartData.size()));
-            Log.d("%%%%", String.valueOf(transparentUartData.toString()));
-            Log.d("$$$$", newBytes.toString());
-            while (search) {                                                                        //Keep searching until the code has worked through all the bytes
-                final byte[] allBytes = transparentUartData.toByteArray();                          //Put all the bytes into a byte array
-                search = false;                                                                     //Assume there is no termination byte, and update to repeat the search if we find one
-                byte[] newLine = Arrays.copyOf(allBytes, allBytes.length);
-                byte[] leftOver = Arrays.copyOfRange(allBytes, 0, allBytes.length);
+            final byte[] allBytes = transparentUartData.toByteArray();                          //Put all the bytes into a byte array
 
-                transparentUartData.reset();
-                transparentUartData.write(leftOver);
-                final String newLineStr = new String(newLine, StandardCharsets.UTF_8);              //Create a string from the bytes up to the termination byte
-                textTemperature.setText("\n" + newLineStr);
-                search = true;
-                break;
-            }
+            byte[] newLine = Arrays.copyOf(allBytes, allBytes.length);
+            byte[] leftOver = Arrays.copyOfRange(allBytes, 0, allBytes.length);
+            Log.d("112", String.valueOf(newLine));
+            Log.d("911", Arrays.toString(newLine));
+            Log.d("211", String.valueOf(allBytes));
+            Log.d("119", Arrays.toString(allBytes));
+            BigInteger bigInteger = new BigInteger(1, allBytes);
+            String result = String.format("%x", bigInteger);
+            Log.d("@%%@%@", "RESULT : " + result);
+            transparentUartData.reset();
+            transparentUartData.write(leftOver);
+            final String newLineStr = new String(newLine, StandardCharsets.UTF_8);              //Create a string from the bytes up to the termination byte
+
+            textTemperature.setText(textTemperature.getText() + "\n" + "0X"+result);
+
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }

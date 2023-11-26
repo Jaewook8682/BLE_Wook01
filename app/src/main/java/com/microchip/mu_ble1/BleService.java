@@ -60,8 +60,6 @@ public class BleService extends Service {
     private final static UUID UUID_TRANSPARENT_SEND_CHAR =       UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); //Characteristic for Transparent UART to send to RN or BM module, properties - write, write no response
     private final static UUID UUID_TRANSPARENT_RECEIVE_CHAR =    UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); //Characteristic for Transparent UART to receive from RN or BM module, properties - notify, write, write no response
     private final static UUID UUID_CCCD =                        UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"); //Descriptor to enable notification for a characteristic
-    private final static UUID UUID_CCCD2 =                       UUID.fromString("00002901-0000-1000-8000-00805f9b34fb"); //Descriptor to enable notification for a characteristic
-
 
     private final Queue<byte[]> characteristicWriteQueue = new LinkedList<>();                      //Queue to buffer multiple writes since the radio does one at a time
     private final Queue<BluetoothGattDescriptor> descriptorWriteQueue = new LinkedList<>();         //Queue to buffer multiple writes since the radio does one at a time
@@ -425,7 +423,7 @@ public class BleService extends Service {
     // Read from the Transparent UART - get all the bytes that have been received since the last read
     public byte[] readFromTransparentUART() {
         try {
-            final byte[] out = transparentReceiveOutput.toByteArray();                              //Get bytes from the ByteArrayOutputStream where they were put when onCharacteristicChanged was executed
+            final byte[] out = transparentReceiveOutput.toByteArray();                              //Get bytes from the ByteArrayOutputStream where they were put when onCharacteristicChanged was executed\
             transparentReceiveOutput.reset();                                                       //Reset (empty) the ByteArrayOutputStream since we have all the bytes
             return out;                                                                             //Return the array of bytes
         } catch (Exception e) {
