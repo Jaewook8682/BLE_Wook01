@@ -52,6 +52,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.common.util.Hex;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -505,23 +506,30 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void processIncomingData(byte[] newBytes) {
         try {
-            transparentUartData.write(newBytes);                                                    //Add new data to any previous bytes left over
+            /*
+            transparentUartData.write(newBytes);
+            Log.d("!!!!", String.valueOf(newBytes));
             final byte[] allBytes = transparentUartData.toByteArray();                          //Put all the bytes into a byte array
 
             byte[] newLine = Arrays.copyOf(allBytes, allBytes.length);
             byte[] leftOver = Arrays.copyOfRange(allBytes, 0, allBytes.length);
-            Log.d("112", String.valueOf(newLine));
-            Log.d("911", Arrays.toString(newLine));
-            Log.d("211", String.valueOf(allBytes));
-            Log.d("119", Arrays.toString(allBytes));
-            BigInteger bigInteger = new BigInteger(1, allBytes);
+
+            BigInteger bigInteger = new BigInteger(1, newLine);
             String result = String.format("%x", bigInteger);
             Log.d("@%%@%@", "RESULT : " + result);
+            String hex = new java.math.BigInteger(newLine).toString(16);
+            Log.d("%%@@", hex);
             transparentUartData.reset();
             transparentUartData.write(leftOver);
-            final String newLineStr = new String(newLine, StandardCharsets.UTF_8);              //Create a string from the bytes up to the termination byte
+            //final String newLineStr = new String(newLine, StandardCharsets.UTF_8);              //Create a string from the bytes up to the termination byte
 
-            textTemperature.setText(textTemperature.getText() + "\n" + "0X"+result);
+            //textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + "0X"+result+ "   Received");
+            textTemperature.setText(result);
+            System.out.println("~_~"+result.equals(textTemperature.getText()));
+             */
+
+            textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes));
+
 
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
