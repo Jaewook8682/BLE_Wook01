@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "935283027361",
-    "project_id": "mu-ble",
-    "storage_bucket": "mu-ble.appspot.com"
+    "project_number": "397721024077",
+    "project_id": "quickstart1-38d34",
+    "storage_bucket": "quickstart1-38d34.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:935283027361:android:151e2a5db2d8203fc0efe0",
+        "mobilesdk_app_id": "1:397721024077:android:15a0a3beab2e82df484e04",
         "android_client_info": {
           "package_name": "com.microchip.mu_ble1"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD5scHC6BFwOngiWfAl2fKVWsHJsUI6mtA"
+          "current_key": "AIzaSyCWtNu0TpzEhYixBIPf9hgNeP_NV608NRo"
         }
       ],
       "services": {

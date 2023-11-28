@@ -28,7 +28,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -44,29 +43,28 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.common.util.Hex;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
-import com.jjoe64.graphview.GraphView;
-import com.jjoe64.graphview.series.DataPoint;
-import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 
 public class BleMainActivity extends AppCompatActivity {
     private final static String TAG = BleMainActivity.class.getSimpleName();
@@ -83,18 +81,18 @@ public class BleMainActivity extends AppCompatActivity {
     private ShowAlertDialogs showAlert;                                                             //Object that creates and shows all the alert pop ups used in the app
     private Handler connectTimeoutHandler;                                                          //Handler to provide a time out if connection attempt takes too long
     private String bleDeviceName, bleDeviceAddress;                                                 //Name and address of remote Bluetooth device
-    private TextView textDeviceNameAndAddress;                                                      //To show device and status information on the screen
-    private TextView textTemperature;
+    private TextView textDeviceNameAndAddress, textTemperature, ld_data_;                                                      //To show device and status information on the screen
     private enum StateConnection {DISCONNECTED, CONNECTING, DISCOVERING, CONNECTED, DISCONNECTING}  //States of the Bluetooth connection
     private StateConnection stateConnection;                                                        //State of Bluetooth connection
     private enum StateApp {STARTING_SERVICE, REQUEST_PERMISSION, ENABLING_BLUETOOTH, RUNNING}       //States of the app
     private StateApp stateApp;                                                                      //State of the app
-    private LineGraphSeries<DataPoint> rxSeries;
     private double GraphHorizontalPoint = 0d;                                                  //Current horizontal position to be plotted on the graph
 
     private FirebaseDatabase database;
     private DatabaseReference databaseReference;
-    private ArrayList<User> arrayList;
+    private int d_num = 1;
+    private String[] user_arr;
+
 
     // ----------------------------------------------------------------------------------------------------------------
     // Activity launched
@@ -122,28 +120,22 @@ public class BleMainActivity extends AppCompatActivity {
         connectTimeoutHandler = new Handler(Looper.getMainLooper());                                //Create a handler for a delayed runnable that will stop the connection attempt after a timeout
         textDeviceNameAndAddress = findViewById(R.id.deviceNameAndAddressText);                     //Get a reference to the TextView that will display the device name and address
         textTemperature = findViewById(R.id.temperatureTextView);                                   //Get a reference to the TextView that will display the temperature
+        ld_data_ = findViewById(R.id.ld_data);
 
         //Firebase
-        arrayList = new ArrayList<>();
         database = FirebaseDatabase.getInstance();
         databaseReference = database.getReference("User");
 
-        Button bt_save_ = findViewById(R.id.bt_save);
-        EditText et_save1_ = findViewById(R.id.et_save1);
-        EditText et_save2_ = findViewById(R.id.et_save2);
-        bt_save_.setOnClickListener(new View.OnClickListener() {
+        EditText et_load_ = findViewById(R.id.et_load);
+        Button bt_load_ = findViewById(R.id.bt_load);
+        bt_load_.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                save_data(et_save1_.getText().toString(), et_save2_.getText().toString());
-                et_save1_.setText(null);
-                et_save2_.setText(null);
+            public void onClick(View view) {
+                String load_id = et_load_.getText().toString();
+                search(load_id);
+                et_load_.setText(null);
             }
         });
-
-        GraphView rxGraph_ = findViewById(R.id.rxGraph);                               //Get a reference to the GraphView that will plot the accelerometer value
-        rxSeries = new LineGraphSeries<>();
-        rxSeries.setColor(Color.BLUE);
-        rxGraph_.addSeries(rxSeries);
 
         Button bt_send_ = findViewById(R.id.bt_send);
         EditText et_send_ = findViewById(R.id.et_send);
@@ -158,9 +150,22 @@ public class BleMainActivity extends AppCompatActivity {
         });
     }
 
-    private void save_data(String name, String value) {
-        User user = new User(name, value);
-        databaseReference.child("test1").setValue(user);
+    private int save_data(int d_num, String value) {
+        SimpleDateFormat sdf = new SimpleDateFormat("MMddhhmmss");
+        Date now = new Date();
+        String dd = sdf.format(now);
+        String nn = "data"+ new String(String.valueOf(d_num));
+        if (value.length() > 400){
+            String s1 = value.substring(0, 400);
+            String s2 = value.substring(400, 800);
+            databaseReference.child(dd).child(nn).setValue(s1);
+            nn = "data"+ new String(String.valueOf(d_num+1));
+            databaseReference.child(dd).child(nn).setValue(s2);
+            d_num++;
+        } else{
+            databaseReference.child(dd).child(nn).setValue(value);
+        }
+        return d_num;
     }
 
 
@@ -497,7 +502,6 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void initializeDisplay() {
         try {
-            rxSeries.resetData(new DataPoint[0]);
             GraphHorizontalPoint = 0d;
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
@@ -529,8 +533,13 @@ public class BleMainActivity extends AppCompatActivity {
              */
 
             textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes));
-
-
+            if(d_num >3){
+                d_num=1;
+            }
+            if(newBytes.length != 0) {
+                d_num = save_data(d_num, String.valueOf(Hex.bytesToStringUppercase(newBytes)));
+                d_num++;
+            }
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
@@ -639,5 +648,10 @@ public class BleMainActivity extends AppCompatActivity {
                 invalidateOptionsMenu();                                                            //Update the menu to reflect the connection state stateConnection
             }
         });
+    }
+
+    private void search(String id){
+        Log.d("ID", id);
+        databaseReference.child("User").child(id).get().addOnSuccessListener()
     }
 }

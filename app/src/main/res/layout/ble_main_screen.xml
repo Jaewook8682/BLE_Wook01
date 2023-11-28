@@ -41,7 +41,7 @@
         <EditText
             android:id="@+id/et_send"
             android:layout_marginLeft="10dp"
-            android:layout_width="300dp"
+            android:layout_width="150dp"
             android:layout_height="50dp"/>
         <Button
             android:id="@+id/bt_send"
@@ -53,7 +53,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Received Data"
-        android:textSize="30sp"/>
+        android:textSize="20sp"/>
 
     <ScrollView
         android:layout_gravity="center"
@@ -72,36 +72,48 @@
                 android:textColor="@color/DarkBlue"
                 android:textSize="15sp"/>
         </LinearLayout>
-
     </ScrollView>
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="wrap_content"
         android:orientation="horizontal">
         <EditText
-            android:id="@+id/et_save1"
-            android:layout_marginLeft="10dp"
-            android:layout_width="100dp"
-            android:layout_height="50dp"/>
-        <EditText
-            android:id="@+id/et_save2"
-            android:layout_marginLeft="10dp"
-            android:layout_width="100dp"
-            android:layout_height="50dp"/>
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/et_load"/>
         <Button
-            android:id="@+id/bt_save"
+            android:id="@+id/bt_load"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send"/>
+            android:text="Load"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="(mmddhhmmss)"
+            android:textSize="15dp"/>
     </LinearLayout>
-
-
-    <com.jjoe64.graphview.GraphView
-        android:id="@+id/rxGraph"
+    <TextView
         android:layout_width="match_parent"
-        android:layout_height="203dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="8dp" />
+        android:layout_height="wrap_content"
+        android:text="Loaded Data"
+        android:textSize="20sp"/>
+    <ScrollView
+        android:layout_gravity="center"
+        android:layout_width="350dp"
+        android:layout_height="200dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center">
+            <TextView
+                android:id="@+id/ld_data"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/DarkBlue"
+                android:textSize="15sp"/>
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>
