@@ -81,7 +81,7 @@ public class BleMainActivity extends AppCompatActivity {
     private ShowAlertDialogs showAlert;                                                             //Object that creates and shows all the alert pop ups used in the app
     private Handler connectTimeoutHandler;                                                          //Handler to provide a time out if connection attempt takes too long
     private String bleDeviceName, bleDeviceAddress;                                                 //Name and address of remote Bluetooth device
-    private TextView textDeviceNameAndAddress, textTemperature, ld_data_;                                                      //To show device and status information on the screen
+    private TextView textDeviceNameAndAddress, textTemperature, ld_data_, tv_rx_;                                                      //To show device and status information on the screen
     private enum StateConnection {DISCONNECTED, CONNECTING, DISCOVERING, CONNECTED, DISCONNECTING}  //States of the Bluetooth connection
     private StateConnection stateConnection;                                                        //State of Bluetooth connection
     private enum StateApp {STARTING_SERVICE, REQUEST_PERMISSION, ENABLING_BLUETOOTH, RUNNING}       //States of the app
@@ -121,6 +121,7 @@ public class BleMainActivity extends AppCompatActivity {
         textDeviceNameAndAddress = findViewById(R.id.deviceNameAndAddressText);                     //Get a reference to the TextView that will display the device name and address
         textTemperature = findViewById(R.id.temperatureTextView);                                   //Get a reference to the TextView that will display the temperature
         ld_data_ = findViewById(R.id.ld_data);
+        tv_rx_ = findViewById(R.id.tv_rx);
 
         //Firebase
         database = FirebaseDatabase.getInstance();
@@ -131,6 +132,7 @@ public class BleMainActivity extends AppCompatActivity {
         bt_load_.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                ld_data_.setText(null);
                 String load_id = et_load_.getText().toString();
                 search(load_id);
                 et_load_.setText(null);
@@ -165,6 +167,7 @@ public class BleMainActivity extends AppCompatActivity {
         } else{
             databaseReference.child(dd).child(nn).setValue(value);
         }
+        tv_rx_.setText("Received Data - saved as" + " - " + dd);
         return d_num;
     }
 
@@ -510,35 +513,24 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void processIncomingData(byte[] newBytes) {
         try {
-            /*
-            transparentUartData.write(newBytes);
-            Log.d("!!!!", String.valueOf(newBytes));
-            final byte[] allBytes = transparentUartData.toByteArray();                          //Put all the bytes into a byte array
-
-            byte[] newLine = Arrays.copyOf(allBytes, allBytes.length);
-            byte[] leftOver = Arrays.copyOfRange(allBytes, 0, allBytes.length);
-
-            BigInteger bigInteger = new BigInteger(1, newLine);
-            String result = String.format("%x", bigInteger);
-            Log.d("@%%@%@", "RESULT : " + result);
-            String hex = new java.math.BigInteger(newLine).toString(16);
-            Log.d("%%@@", hex);
-            transparentUartData.reset();
-            transparentUartData.write(leftOver);
-            //final String newLineStr = new String(newLine, StandardCharsets.UTF_8);              //Create a string from the bytes up to the termination byte
-
-            //textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + "0X"+result+ "   Received");
-            textTemperature.setText(result);
-            System.out.println("~_~"+result.equals(textTemperature.getText()));
-             */
-
-            textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes));
-            if(d_num >3){
-                d_num=1;
+            if(Hex.bytesToStringUppercase(newBytes).length() > 400){
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes).substring(0, 400));
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes).substring(400, 800));
+            } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
+                Log.d("Empty", "Empty data received");
+            } else{
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes));
             }
+
             if(newBytes.length != 0) {
                 d_num = save_data(d_num, String.valueOf(Hex.bytesToStringUppercase(newBytes)));
                 d_num++;
+            }else{
+                Log.d("zero", "zero received");
+            }
+            if(d_num >3){
+                d_num=1;
+                textTemperature.setText(textTemperature.getText() + "\n" + "==================================");
             }
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
@@ -652,6 +644,26 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void search(String id){
         Log.d("ID", id);
-        databaseReference.child("User").child(id).get().addOnSuccessListener()
+        DatabaseReference mdb = FirebaseDatabase.getInstance().getReference();
+        final int[] db_num = {1};
+        mdb.child("User").child(id).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for(DataSnapshot postSnapshot : snapshot.getChildren()){
+                    String value = postSnapshot.getValue().toString();
+                    Log.d("!@#", value);
+                    ld_data_.setText(ld_data_.getText() + "\n" + "Data"+String.valueOf(db_num[0])+" : "+value);
+                    db_num[0]++;
+                    }
+
+                //Log.d("Database1", value.substring(1, 407));
+                //Log.d("Database2", value.substring(409, 815));
+                //Log.d("Database3", value.substring(817, 1223));
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("Error", "fail to load data");
+            }
+        });
     }
 }

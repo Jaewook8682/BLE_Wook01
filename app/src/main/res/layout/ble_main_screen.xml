@@ -50,9 +50,10 @@
             android:text="Send"/>
     </LinearLayout>
     <TextView
+        android:id="@+id/tv_rx"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Received Data"
+        android:text="Received Data - saved as"
         android:textSize="20sp"/>
 
     <ScrollView
