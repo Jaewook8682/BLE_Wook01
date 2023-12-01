@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -61,9 +62,17 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
+import com.jjoe64.graphview.LegendRenderer;
+import com.jjoe64.graphview.series.LineGraphSeries;
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.series.DataPoint;
+
+
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 
 public class BleMainActivity extends AppCompatActivity {
@@ -81,17 +90,21 @@ public class BleMainActivity extends AppCompatActivity {
     private ShowAlertDialogs showAlert;                                                             //Object that creates and shows all the alert pop ups used in the app
     private Handler connectTimeoutHandler;                                                          //Handler to provide a time out if connection attempt takes too long
     private String bleDeviceName, bleDeviceAddress;                                                 //Name and address of remote Bluetooth device
-    private TextView textDeviceNameAndAddress, textTemperature, ld_data_, tv_rx_;                                                      //To show device and status information on the screen
+    private TextView textDeviceNameAndAddress, textTemperature, tv_rx_;                                                      //To show device and status information on the screen
     private enum StateConnection {DISCONNECTED, CONNECTING, DISCOVERING, CONNECTED, DISCONNECTING}  //States of the Bluetooth connection
     private StateConnection stateConnection;                                                        //State of Bluetooth connection
     private enum StateApp {STARTING_SERVICE, REQUEST_PERMISSION, ENABLING_BLUETOOTH, RUNNING}       //States of the app
     private StateApp stateApp;                                                                      //State of the app
-    private double GraphHorizontalPoint = 0d;                                                  //Current horizontal position to be plotted on the graph
+    private double GraphHorizontalPoint1 = 0d;                                                  //Current horizontal position to be plotted on the graph
+    private double GraphHorizontalPoint2 = 0d;                                                  //Current horizontal position to be plotted on the graph
+    private double GraphHorizontalPoint3 = 0d;                                                  //Current horizontal position to be plotted on the graph
+    private LineGraphSeries<DataPoint> d1Series, d2Series, d3Series;
 
     private FirebaseDatabase database;
     private DatabaseReference databaseReference;
     private int d_num = 1;
-    private String[] user_arr;
+
+
 
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -120,8 +133,36 @@ public class BleMainActivity extends AppCompatActivity {
         connectTimeoutHandler = new Handler(Looper.getMainLooper());                                //Create a handler for a delayed runnable that will stop the connection attempt after a timeout
         textDeviceNameAndAddress = findViewById(R.id.deviceNameAndAddressText);                     //Get a reference to the TextView that will display the device name and address
         textTemperature = findViewById(R.id.temperatureTextView);                                   //Get a reference to the TextView that will display the temperature
-        ld_data_ = findViewById(R.id.ld_data);
+        //ld_data_ = findViewById(R.id.ld_data);
         tv_rx_ = findViewById(R.id.tv_rx);
+
+        // Graph View
+        GraphView rx_data_ = findViewById(R.id.rx_graph);
+        d1Series = new LineGraphSeries<>();
+        d1Series.setColor(Color.RED);
+        rx_data_.addSeries(d1Series);
+        d1Series.setTitle("d1");
+
+        d2Series = new LineGraphSeries<>();
+        d2Series.setColor(Color.BLUE);
+        rx_data_.addSeries(d2Series);
+        d2Series.setTitle("d2");
+
+        d3Series = new LineGraphSeries<>();
+        d3Series.setColor(Color.GREEN);
+        rx_data_.addSeries(d3Series);
+        d3Series.setTitle("d3");
+
+        rx_data_.getLegendRenderer().setVisible(true);
+        rx_data_.getLegendRenderer().setAlign(LegendRenderer.LegendAlign.TOP);
+
+        rx_data_.getViewport().setXAxisBoundsManual(true);                                //Manually set limits for horizontal X axis of graph
+        rx_data_.setTitle("Received Data Graph");
+        rx_data_.getViewport().setMinX(0);                                                //Graph will plot points from 0
+        rx_data_.getViewport().setMaxX(100);                                               // to 30 on X axis
+        rx_data_.getViewport().setYAxisBoundsManual(true);                                //Manually set limits for horizontal X axis of graph
+        rx_data_.getViewport().setMinY(-100);                                            //Graph will plot points from -2048
+        rx_data_.getViewport().setMaxY(4047);                                             // to +2047 on Y axis
 
         //Firebase
         database = FirebaseDatabase.getInstance();
@@ -132,7 +173,7 @@ public class BleMainActivity extends AppCompatActivity {
         bt_load_.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ld_data_.setText(null);
+                //ld_data_.setText(null);
                 String load_id = et_load_.getText().toString();
                 search(load_id);
                 et_load_.setText(null);
@@ -505,7 +546,12 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void initializeDisplay() {
         try {
-            GraphHorizontalPoint = 0d;
+            d1Series.resetData(new DataPoint[0]);
+            d2Series.resetData(new DataPoint[0]);
+            d3Series.resetData(new DataPoint[0]);
+            GraphHorizontalPoint1 = 0d;
+            GraphHorizontalPoint2 = 0d;
+            GraphHorizontalPoint3 = 0d;
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
@@ -513,21 +559,74 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void processIncomingData(byte[] newBytes) {
         try {
+            Log.d("d_num", String.valueOf(d_num));
+            Log.d("length", String.valueOf(Hex.bytesToStringUppercase(newBytes).length()));
+
             if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes).substring(0, 400));
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes).substring(400, 800));
+                String[] rx_arr = new String[200];
+                Log.d("EE0", "00");
+                for(int i =0;i<100;i++){
+                    String d11  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                    String d12  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4));
+                    String d13  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                    rx_arr[i]   = String.valueOf(Integer.valueOf(d11+d12+d13, 16));
+
+
+                    String d21    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+401));
+                    String d22    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+400));
+                    String d23    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+402));
+                    rx_arr[i+100] = String.valueOf(Integer.valueOf(d21+d22+d23, 16));
+                    if (d_num == 1){
+                        Log.d("ERR1", "Graph 0202");
+                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d11+d12+d13, 16)), true, 100);
+                    d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d21+d22+d23, 16)), true, 100);
+                    GraphHorizontalPoint1 += 1d;
+                    GraphHorizontalPoint2 += 1d;
+                    } else if (d_num == 2) {
+                        Log.d("ERR2", "Graph 0101");
+                        d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d11+d12+d13, 16)), true, 100);
+                        d3Series.appendData(new DataPoint(GraphHorizontalPoint3, Integer.valueOf(d21+d22+d23, 16)), true, 100);
+                        GraphHorizontalPoint2 += 1d;
+                        GraphHorizontalPoint3 += 1d;
+                    } else{
+                        Log.d("ERR", "Graph error1");
+                    }
+                }
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(Arrays.copyOfRange(rx_arr, 0, 100)));
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(Arrays.copyOfRange(rx_arr, 100, 200)));
             } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
                 Log.d("Empty", "Empty data received");
             } else{
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Hex.bytesToStringUppercase(newBytes));
+                Log.d("EE1", "11");
+                String[] rx_arr = new String[100];
+                for(int i =0;i<100;i++){
+                    String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                    String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4));
+                    String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                    rx_arr[i] = String.valueOf(Integer.valueOf(d1+d2+d3, 16));
+                    Log.d("EE1", rx_arr[i]);
+                    if (d_num ==1){
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        GraphHorizontalPoint1 += 1d;
+                    } else if (d_num == 2) {
+                        d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        GraphHorizontalPoint2 += 1d;
+                    } else if(d_num == 3){
+                        d3Series.appendData(new DataPoint(GraphHorizontalPoint3, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        GraphHorizontalPoint3 += 1d;
+                    } else{
+                        Log.d("ERR", "Graph error2");
+                    }
+                }
+                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(rx_arr));
             }
 
             if(newBytes.length != 0) {
                 d_num = save_data(d_num, String.valueOf(Hex.bytesToStringUppercase(newBytes)));
-                d_num++;
             }else{
                 Log.d("zero", "zero received");
             }
+            d_num++;
             if(d_num >3){
                 d_num=1;
                 textTemperature.setText(textTemperature.getText() + "\n" + "==================================");
@@ -652,7 +751,7 @@ public class BleMainActivity extends AppCompatActivity {
                 for(DataSnapshot postSnapshot : snapshot.getChildren()){
                     String value = postSnapshot.getValue().toString();
                     Log.d("!@#", value);
-                    ld_data_.setText(ld_data_.getText() + "\n" + "Data"+String.valueOf(db_num[0])+" : "+value);
+                    //ld_data_.setText(ld_data_.getText() + "\n" + "Data"+String.valueOf(db_num[0])+" : "+value);
                     db_num[0]++;
                     }
 

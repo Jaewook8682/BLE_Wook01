@@ -94,27 +94,9 @@
             android:text="(mmddhhmmss)"
             android:textSize="15dp"/>
     </LinearLayout>
-    <TextView
+    <com.jjoe64.graphview.GraphView
+        android:id="@+id/rx_graph"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Loaded Data"
-        android:textSize="20sp"/>
-    <ScrollView
-        android:layout_gravity="center"
-        android:layout_width="350dp"
-        android:layout_height="200dp">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center">
-            <TextView
-                android:id="@+id/ld_data"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/DarkBlue"
-                android:textSize="15sp"/>
-        </LinearLayout>
-    </ScrollView>
+        android:layout_height="250dp"/>
+
 </LinearLayout>
