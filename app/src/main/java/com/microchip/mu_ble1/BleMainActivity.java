@@ -103,6 +103,8 @@ public class BleMainActivity extends AppCompatActivity {
     private FirebaseDatabase database;
     private DatabaseReference databaseReference;
     private int d_num = 1;
+    private String[] rx_arr = new String[300];
+
 
 
 
@@ -115,7 +117,8 @@ public class BleMainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);                                                         //Call superclass (AppCompatActivity) onCreate method
         setContentView(R.layout.ble_main_screen);                                                   //Show the main screen - may be shown briefly if we immediately start the scan activity
         Toolbar myToolbar = findViewById(R.id.toolbar);                                             //Get a reference to the Toolbar at the top of the screen
-        setSupportActionBar(myToolbar);                                                             //Treat the toolbar as an Action bar (used for app name, menu, navigation, etc.)
+        setSupportActionBar(myToolbar);
+
         progressBar = findViewById(R.id.toolbar_progress_bar);                                      //Get a reference to the progress bar
         progressBar.setIndeterminate(true);                                                         //Make the progress bar indeterminate (circular)
         progressBar.setVisibility(ProgressBar.INVISIBLE);                                           //Hide the circular progress bar
@@ -142,16 +145,6 @@ public class BleMainActivity extends AppCompatActivity {
         d1Series.setColor(Color.RED);
         rx_data_.addSeries(d1Series);
         d1Series.setTitle("d1");
-
-        d2Series = new LineGraphSeries<>();
-        d2Series.setColor(Color.BLUE);
-        rx_data_.addSeries(d2Series);
-        d2Series.setTitle("d2");
-
-        d3Series = new LineGraphSeries<>();
-        d3Series.setColor(Color.GREEN);
-        rx_data_.addSeries(d3Series);
-        d3Series.setTitle("d3");
 
         rx_data_.getLegendRenderer().setVisible(true);
         rx_data_.getLegendRenderer().setAlign(LegendRenderer.LegendAlign.TOP);
@@ -559,35 +552,29 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void processIncomingData(byte[] newBytes) {
         try {
-            Log.d("d_num", String.valueOf(d_num));
-            Log.d("length", String.valueOf(Hex.bytesToStringUppercase(newBytes).length()));
-
             if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                String[] rx_arr = new String[200];
-                Log.d("EE0", "00");
                 for(int i =0;i<100;i++){
-                    String d11  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                    String d12  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4));
-                    String d13  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                    rx_arr[i]   = String.valueOf(Integer.valueOf(d11+d12+d13, 16));
+                    String d11  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                    String d12  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
+                    String d13  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
+                    String d14  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                    rx_arr[i+(d_num-1)*100]   = String.valueOf(Integer.valueOf(d11+d12+d13+d14, 16));
 
-
-                    String d21    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+401));
-                    String d22    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+400));
-                    String d23    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+402));
-                    rx_arr[i+100] = String.valueOf(Integer.valueOf(d21+d22+d23, 16));
+                    String d21    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+402));
+                    String d22    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+403));
+                    String d23    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+400));
+                    String d24    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+401));
+                    rx_arr[i+100+(d_num-1)*100] = String.valueOf(Integer.valueOf(d21+d22+d23+d24, 16));
                     if (d_num == 1){
-                        Log.d("ERR1", "Graph 0202");
-                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d11+d12+d13, 16)), true, 100);
-                    d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d21+d22+d23, 16)), true, 100);
+                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d11+d12+d13+d14, 16)), true, 100);
                     GraphHorizontalPoint1 += 1d;
-                    GraphHorizontalPoint2 += 1d;
+                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d21+d22+d23+d24, 16)), true, 100);
+                    GraphHorizontalPoint1 += 1d;
                     } else if (d_num == 2) {
-                        Log.d("ERR2", "Graph 0101");
-                        d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d11+d12+d13, 16)), true, 100);
-                        d3Series.appendData(new DataPoint(GraphHorizontalPoint3, Integer.valueOf(d21+d22+d23, 16)), true, 100);
-                        GraphHorizontalPoint2 += 1d;
-                        GraphHorizontalPoint3 += 1d;
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d11+d12+d13+d14, 16)), true, 100);
+                        GraphHorizontalPoint1 += 1d;
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+200, Integer.valueOf(d21+d22+d23+d24, 16)), true, 100);
+                        GraphHorizontalPoint1 += 1d;
                     } else{
                         Log.d("ERR", "Graph error1");
                     }
@@ -597,22 +584,20 @@ public class BleMainActivity extends AppCompatActivity {
             } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
                 Log.d("Empty", "Empty data received");
             } else{
-                Log.d("EE1", "11");
-                String[] rx_arr = new String[100];
                 for(int i =0;i<100;i++){
-                    String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                    String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4));
-                    String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                    rx_arr[i] = String.valueOf(Integer.valueOf(d1+d2+d3, 16));
-                    Log.d("EE1", rx_arr[i]);
+                    String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                    String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
+                    String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
+                    String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                    rx_arr[i+(d_num-1)*100] = String.valueOf(Integer.valueOf(d1+d2+d3+d4, 16));
                     if (d_num ==1){
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
                         GraphHorizontalPoint1 += 1d;
                     } else if (d_num == 2) {
-                        d2Series.appendData(new DataPoint(GraphHorizontalPoint2, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
                         GraphHorizontalPoint2 += 1d;
                     } else if(d_num == 3){
-                        d3Series.appendData(new DataPoint(GraphHorizontalPoint3, Integer.valueOf(d1+d2+d3, 16)), true, 100);
+                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
                         GraphHorizontalPoint3 += 1d;
                     } else{
                         Log.d("ERR", "Graph error2");
