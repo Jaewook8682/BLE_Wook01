@@ -52,6 +52,15 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.google.android.gms.common.util.Hex;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -74,6 +83,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class BleMainActivity extends AppCompatActivity {
     private final static String TAG = BleMainActivity.class.getSimpleName();
@@ -96,22 +108,22 @@ public class BleMainActivity extends AppCompatActivity {
     private enum StateApp {STARTING_SERVICE, REQUEST_PERMISSION, ENABLING_BLUETOOTH, RUNNING}       //States of the app
     private StateApp stateApp;                                                                      //State of the app
     private double GraphHorizontalPoint1 = 0d;                                                  //Current horizontal position to be plotted on the graph
-    private double GraphHorizontalPoint2 = 0d;                                                  //Current horizontal position to be plotted on the graph
-    private double GraphHorizontalPoint3 = 0d;                                                  //Current horizontal position to be plotted on the graph
-    private LineGraphSeries<DataPoint> d1Series, d2Series, d3Series;
+    private double GraphHorizontalPoint2 = 100d;                                                  //Current horizontal position to be plotted on the graph
+    private double GraphHorizontalPoint3 = 200d;                                                  //Current horizontal position to be plotted on the graph
+    private LineChart chart;
 
     private FirebaseDatabase database;
     private DatabaseReference databaseReference;
     private int d_num = 1;
-    private String[] rx_arr = new String[300];
+
+    private Timer timer = new Timer();
+    private Float[] grx_arr = new Float[300];
 
 
 
 
 
-    // ----------------------------------------------------------------------------------------------------------------
-    // Activity launched
-    // Invoked by launcher Intent
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);                                                         //Call superclass (AppCompatActivity) onCreate method
@@ -140,22 +152,17 @@ public class BleMainActivity extends AppCompatActivity {
         tv_rx_ = findViewById(R.id.tv_rx);
 
         // Graph View
-        GraphView rx_data_ = findViewById(R.id.rx_graph);
-        d1Series = new LineGraphSeries<>();
-        d1Series.setColor(Color.RED);
-        rx_data_.addSeries(d1Series);
-        d1Series.setTitle("d1");
+        chart = (LineChart) findViewById(R.id.graph1);
+        chart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
 
-        rx_data_.getLegendRenderer().setVisible(true);
-        rx_data_.getLegendRenderer().setAlign(LegendRenderer.LegendAlign.TOP);
+        chart.getAxisRight().setEnabled(false);
+        chart.getLegend().setTextColor(Color.WHITE);
+        chart.animateXY(2000, 2000);
+        chart.invalidate();
 
-        rx_data_.getViewport().setXAxisBoundsManual(true);                                //Manually set limits for horizontal X axis of graph
-        rx_data_.setTitle("Received Data Graph");
-        rx_data_.getViewport().setMinX(0);                                                //Graph will plot points from 0
-        rx_data_.getViewport().setMaxX(100);                                               // to 30 on X axis
-        rx_data_.getViewport().setYAxisBoundsManual(true);                                //Manually set limits for horizontal X axis of graph
-        rx_data_.getViewport().setMinY(-100);                                            //Graph will plot points from -2048
-        rx_data_.getViewport().setMaxY(4047);                                             // to +2047 on Y axis
+        LineData data = new LineData();
+        chart.setData(data);
+
 
         //Firebase
         database = FirebaseDatabase.getInstance();
@@ -182,6 +189,32 @@ public class BleMainActivity extends AppCompatActivity {
                 String sendData = et_send_.getText().toString();
                 bleService.writeToTransparentUART(sendData.getBytes());
                 et_send_.setText(null);
+            }
+        });
+
+        // request data at certain interval
+        String sendData = "g";
+        Button bt_start = findViewById(R.id.start);
+        bt_start.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                textTemperature.setText("Requesting Data : 5sec");
+                TimerTask timerTask = new TimerTask() {
+                    @Override
+                    public void run() {
+                        bleService.writeToTransparentUART(sendData.getBytes());
+                    }
+                };
+                timer.schedule(timerTask, 0, 1000);
+            }
+        });
+
+        Button bt_stop = findViewById(R.id.stop);
+        bt_stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                timer.cancel();
+                textTemperature.setText("Stop Requesting Data");
             }
         });
     }
@@ -539,12 +572,7 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void initializeDisplay() {
         try {
-            d1Series.resetData(new DataPoint[0]);
-            d2Series.resetData(new DataPoint[0]);
-            d3Series.resetData(new DataPoint[0]);
-            GraphHorizontalPoint1 = 0d;
-            GraphHorizontalPoint2 = 0d;
-            GraphHorizontalPoint3 = 0d;
+            Log.d("What!", "SOOO");
         } catch (Exception e) {
             Log.e(TAG, "Oops, exception caught in " + e.getStackTrace()[0].getMethodName() + ": " + e.getMessage());
         }
@@ -552,66 +580,97 @@ public class BleMainActivity extends AppCompatActivity {
 
     private void processIncomingData(byte[] newBytes) {
         try {
-            if(Hex.bytesToStringUppercase(newBytes).length() > 400){
-                for(int i =0;i<100;i++){
-                    String d11  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                    String d12  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
-                    String d13  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
-                    String d14  = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                    rx_arr[i+(d_num-1)*100]   = String.valueOf(Integer.valueOf(d11+d12+d13+d14, 16));
+            Log.d("Dnum", String.valueOf(d_num));
+            Log.d("Length", String.valueOf(Hex.bytesToStringUppercase(newBytes).length()));
+            if(d_num == 1){
+                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
+                    for(int i =0;i<100;i++) {
+                        String d11 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 2));
+                        String d12 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 3));
+                        String d13 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 0));
+                        String d14 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 1));
+                        grx_arr[i] = Float.valueOf(d11 + d12 + d13 + d14);
 
-                    String d21    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+402));
-                    String d22    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+403));
-                    String d23    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+400));
-                    String d24    = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+401));
-                    rx_arr[i+100+(d_num-1)*100] = String.valueOf(Integer.valueOf(d21+d22+d23+d24, 16));
-                    if (d_num == 1){
-                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d11+d12+d13+d14, 16)), true, 100);
-                    GraphHorizontalPoint1 += 1d;
-                    d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d21+d22+d23+d24, 16)), true, 100);
-                    GraphHorizontalPoint1 += 1d;
-                    } else if (d_num == 2) {
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d11+d12+d13+d14, 16)), true, 100);
-                        GraphHorizontalPoint1 += 1d;
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+200, Integer.valueOf(d21+d22+d23+d24, 16)), true, 100);
-                        GraphHorizontalPoint1 += 1d;
-                    } else{
-                        Log.d("ERR", "Graph error1");
+                        String d21 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 402));
+                        String d22 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 403));
+                        String d23 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 400));
+                        String d24 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 401));
+                        grx_arr[i + 100] = Float.valueOf(d21 + d22 + d23 + d24);
+                    }
+                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
+                    Log.d("Empty", "Empty data received");
+                } else {  // 100 data received
+                    for(int i =0;i<100;i++){
+                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
+                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
+                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                        grx_arr[i] = Float.valueOf(d1 + d2 + d3 + d4);
                     }
                 }
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(Arrays.copyOfRange(rx_arr, 0, 100)));
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(Arrays.copyOfRange(rx_arr, 100, 200)));
-            } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
-                Log.d("Empty", "Empty data received");
-            } else{
-                for(int i =0;i<100;i++){
-                    String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
-                    String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
-                    String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
-                    String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
-                    rx_arr[i+(d_num-1)*100] = String.valueOf(Integer.valueOf(d1+d2+d3+d4, 16));
-                    if (d_num ==1){
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
-                        GraphHorizontalPoint1 += 1d;
-                    } else if (d_num == 2) {
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
-                        GraphHorizontalPoint2 += 1d;
-                    } else if(d_num == 3){
-                        d1Series.appendData(new DataPoint(GraphHorizontalPoint1+100, Integer.valueOf(d1+d2+d3+d4, 16)), true, 100);
-                        GraphHorizontalPoint3 += 1d;
-                    } else{
-                        Log.d("ERR", "Graph error2");
+            } else if (d_num == 2) {
+                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
+                    for(int i =0;i<100;i++) {
+                        String d11 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 2));
+                        String d12 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 3));
+                        String d13 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 0));
+                        String d14 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 1));
+                        grx_arr[i+100] = Float.valueOf(d11 + d12 + d13 + d14);
+
+                        String d21 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 402));
+                        String d22 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 403));
+                        String d23 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 400));
+                        String d24 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i * 4 + 401));
+                        grx_arr[i+200] = Float.valueOf(d21 + d22 + d23 + d24);
+                    }
+                    // draw graph
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            drawing();
+                        }
+                    });
+
+                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
+                    Log.d("Empty", "Empty data received");
+                } else {  // 100 data received
+                    for(int i =0;i<100;i++){
+                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
+                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
+                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                        grx_arr[i+100] = Float.valueOf(d1 + d2 + d3 + d4);
                     }
                 }
-                textTemperature.setText(textTemperature.getText() + "\n" + "New data received" + "\n" + Arrays.toString(rx_arr));
+            } else{      // dnum == 3
+                if(Hex.bytesToStringUppercase(newBytes).length() > 400){
+                    Log.d("Numm ERR", "ERR ERR");
+                } else if(Hex.bytesToStringUppercase(newBytes).length() == 0){
+                    Log.d("Empty", "Empty data received");
+                } else {  // 100 data received
+                    for(int i =0;i<100;i++){
+                        String d1 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+2));
+                        String d2 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+3));
+                        String d3 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+0));
+                        String d4 = String.valueOf(Hex.bytesToStringUppercase(newBytes).charAt(i*4+1));
+                        grx_arr[i+200] = Float.valueOf(d1 + d2 + d3 + d4);
+                    }
+                    // draw graph
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            drawing();
+                        }
+                    });
+                }
             }
 
             if(newBytes.length != 0) {
-                d_num = save_data(d_num, String.valueOf(Hex.bytesToStringUppercase(newBytes)));
+                d_num = save_data(d_num, Hex.bytesToStringUppercase(newBytes));
+                d_num++;
             }else{
                 Log.d("zero", "zero received");
             }
-            d_num++;
             if(d_num >3){
                 d_num=1;
                 textTemperature.setText(textTemperature.getText() + "\n" + "==================================");
@@ -749,5 +808,47 @@ public class BleMainActivity extends AppCompatActivity {
                 Log.e("Error", "fail to load data");
             }
         });
+    }
+
+    private void drawing() {
+
+        LineData data = chart.getData();
+
+        if (data == null) {
+            data = new LineData();
+            chart.setData(data);
+        }
+
+        ILineDataSet set = data.getDataSetByIndex(0);
+        // set.addEntry(...); // can be called as well
+
+        if (set == null) {
+            set = createSet();
+            data.addDataSet(set);
+        }
+        for(int i = 0; i < 300; i++) {
+            data.addEntry(new Entry((float) set.getEntryCount(), grx_arr[i]), 0);
+            data.notifyDataChanged();
+        }
+        // let the chart know it's data has changed
+        chart.notifyDataSetChanged();
+
+        chart.setVisibleXRangeMaximum(1000);
+        // this automatically refreshes the chart (calls invalidate())
+        chart.moveViewTo(data.getEntryCount(), 50f, YAxis.AxisDependency.LEFT);
+
+    }
+
+    private LineDataSet createSet() {
+        LineDataSet set = new LineDataSet(null, "Real-time Line Data");
+        set.setLineWidth(1f);
+        set.setDrawValues(false);
+        //set.setValueTextColor(getResources().getColor(Color.Color.WHITE));
+        //set.setColor(getResources().getColor(Color.WHITE));
+        set.setMode(LineDataSet.Mode.LINEAR);
+        set.setDrawCircles(false);
+        set.setHighLightColor(Color.rgb(190, 190, 190));
+
+        return set;
     }
 }
